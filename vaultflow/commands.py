@@ -255,3 +255,44 @@ def start_experiment(name):
         show_status()
     else:
         click.secho("✗ Error al crear o cambiar a la nueva rama de experimento.", fg="red")
+
+from .git_utils import merge_branch, delete_branch
+
+def finish_experiment(name):
+    """
+    Lógica para finalizar un experimento.
+    Fusiona la rama del experimento en 'main' y la elimina.
+    """
+    if not is_git_repository():
+        click.secho("✗ Error: Este no es un repositorio de Git.", fg="red")
+        return
+
+    experiment_branch_name = f"exp/{name}"
+
+    if not branch_exists(experiment_branch_name):
+        click.secho(f"✗ Error: El experimento '{experiment_branch_name}' no existe.", fg="red")
+        return
+
+    click.echo(f"Finalizando el experimento '{name}'...")
+    
+    click.echo("  -> Cambiando a la rama 'main'...")
+    if not checkout_branch('main'):
+        click.secho("✗ Error al cambiar a la rama 'main'.", fg="red")
+        return
+
+    click.echo(f"  -> Fusionando '{experiment_branch_name}' en 'main'...")
+    
+    status_code, message = merge_branch(experiment_branch_name)
+
+    if status_code == 0: # Éxito
+        click.secho(f"✓ {message}", fg="green")
+        if click.confirm(f"¿Quieres borrar la rama de experimento '{experiment_branch_name}'?"):
+            if delete_branch(experiment_branch_name):
+                click.secho("✓ Rama de experimento borrada.", fg="green")
+            else:
+                click.secho("✗ No se pudo borrar la rama.", fg="yellow")
+    elif status_code == 1: # Conflicto
+        click.secho(f"✗ {message}", fg="yellow")
+        click.echo("  Por favor, resuelve los conflictos manualmente y luego haz 'git commit'.")
+    else: # Error
+        click.secho(f"✗ {message}", fg="red")

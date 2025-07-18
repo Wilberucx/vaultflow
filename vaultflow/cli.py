@@ -2,7 +2,8 @@ import click
 from .commands import (
     initialize_vault, show_status, stage_changes, 
     commit_changes, create_local_backup, push_changes_to_remote,
-    start_experiment as start_experiment_command
+    start_experiment as start_experiment_command,
+    finish_experiment as finish_experiment_command
 )
 from .utils import display_banner
 
@@ -24,6 +25,12 @@ def init():
 def start_experiment(name):
     """Crea una nueva rama para un experimento de forma segura."""
     start_experiment_command(name)
+
+@cli.command()
+@click.argument('name')
+def finish_experiment(name):
+    """Fusiona un experimento terminado de vuelta a la rama main."""
+    finish_experiment_command(name)
 
 @cli.command()
 def backup():

@@ -108,21 +108,43 @@ def push_changes():
         subprocess.run(['git', 'push'], check=True, capture_output=True)
         return True, "Push exitoso."
     except subprocess.CalledProcessError as e:
-        # Si falla porque el upstream no está configurado, lo configura y reintenta.
+        # Si falla porque el upstream no esta configurado, lo configura y reintenta.
         error_output = e.stderr.decode()
         if 'has no upstream branch' in error_output or 'no se ha especificado el push de destino' in error_output:
             try:
                 # El comando es 'git push --set-upstream origin <branch>'
                 subprocess.run(['git', 'push', '--set-upstream', 'origin', current_branch], check=True, capture_output=True)
-                return True, "Se configuró el rastreo remoto y se realizó el push exitosamente."
+                return True, "Se configuro el rastreo remoto y se realizo el push exitosamente."
             except subprocess.CalledProcessError:
-                return False, "Falló el intento de configurar el rastreo remoto y hacer push."
+                return False, "Fallo el intento de configurar el rastreo remoto y hacer push."
         return False, f"Error desconocido durante el push: {error_output}"
 
 def checkout_branch(branch_name):
     """Ejecuta 'git checkout' para cambiar a una rama existente."""
     try:
         subprocess.run(['git', 'checkout', branch_name], check=True, capture_output=True)
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+def merge_branch(branch_name):
+    """
+    Ejecuta 'git merge' para fusionar una rama en la actual.
+    Devuelve un código de estado: 0=éxito, 1=conflicto, 2=error.
+    """
+    try:
+        subprocess.run(['git', 'merge', '--no-ff', branch_name], check=True, capture_output=True)
+        return 0, "Fusión completada exitosamente."
+    except subprocess.CalledProcessError as e:
+        if 'conflicto' in e.stderr.decode().lower() or 'conflict' in e.stderr.decode().lower():
+            subprocess.run(['git', 'merge', '--abort'], check=False, capture_output=True)
+            return 1, "Conflicto de fusión detectado. La fusión ha sido abortada."
+        return 2, f"Error durante la fusión: {e.stderr.decode()}"
+
+def delete_branch(branch_name):
+    """Ejecuta 'git branch -d' para borrar una rama local."""
+    try:
+        subprocess.run(['git', 'branch', '-d', branch_name], check=True, capture_output=True)
         return True
     except subprocess.CalledProcessError:
         return False
