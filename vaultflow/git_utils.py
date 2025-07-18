@@ -94,3 +94,27 @@ def commit_changes(message):
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
+
+def push_changes():
+    """Ejecuta 'git push' para enviar los cambios al repositorio remoto.
+    Intenta configurar el upstream si no existe.
+    """
+    current_branch = get_current_branch()
+    if not current_branch:
+        return False, "No se pudo determinar la rama actual."
+
+    try:
+        # Intenta un push normal primero
+        subprocess.run(['git', 'push'], check=True, capture_output=True)
+        return True, "Push exitoso."
+    except subprocess.CalledProcessError as e:
+        # Si falla porque el upstream no está configurado, lo configura y reintenta.
+        error_output = e.stderr.decode()
+        if 'has no upstream branch' in error_output or 'no se ha especificado el push de destino' in error_output:
+            try:
+                # El comando es 'git push --set-upstream origin <branch>'
+                subprocess.run(['git', 'push', '--set-upstream', 'origin', current_branch], check=True, capture_output=True)
+                return True, "Se configuró el rastreo remoto y se realizó el push exitosamente."
+            except subprocess.CalledProcessError:
+                return False, "Falló el intento de configurar el rastreo remoto y hacer push."
+        return False, f"Error desconocido durante el push: {error_output}"

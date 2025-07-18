@@ -1,7 +1,7 @@
 import click
 from .commands import (
     initialize_vault, show_status, stage_changes, 
-    commit_changes, create_local_backup
+    commit_changes, create_local_backup, push_changes_to_remote
 )
 from .utils import display_banner
 
@@ -13,7 +13,6 @@ def cli(ctx):
     """
     display_banner()
     if ctx.invoked_subcommand is None:
-        # Si se ejecuta 'vaultflow' sin subcomando, muestra el estado.
         ctx.invoke(status)
 
 @cli.command()
@@ -27,13 +26,18 @@ def backup():
     create_local_backup()
 
 @cli.command()
+def push():
+    """Sincroniza tus backups locales con el repositorio remoto."""
+    push_changes_to_remote()
+
+@cli.command()
 def status():
-    """Muestra el estado actual de tu vault (rama, cambios, ultimo backup)."""
+    """Muestra el estado actual de tu vault."""
     show_status()
 
 @cli.command()
 def stage():
-    """Prepara todos los cambios para el proximo backup (git add .)."""
+    """Prepara todos los cambios para el próximo backup (git add .)."""
     stage_changes()
 
 @cli.command()

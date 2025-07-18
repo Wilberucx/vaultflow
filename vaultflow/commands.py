@@ -199,3 +199,23 @@ def create_local_backup():
         show_status()
     else:
         click.secho("✗ Error al crear el backup (git commit).", fg="red")
+
+def push_changes_to_remote():
+    """
+    Lógica para el comando push.
+    Envía los backups locales al repositorio remoto.
+    """
+    if not is_git_repository():
+        click.secho("✗ Error: Este no es un repositorio de Git.", fg="red")
+        return
+    
+    from .git_utils import push_changes
+
+    click.echo("Sincronizando con el repositorio remoto...")
+    success, message = push_changes()
+
+    if success:
+        click.secho(f"✓ {message}", fg="green")
+    else:
+        click.secho(f"✗ Error durante la sincronización: {message}", fg="red")
+        click.echo("  Asegúrate de haber configurado un repositorio remoto ('git remote add origin <URL>') y después ejecuta 'vaultflow push' de nuevo.")

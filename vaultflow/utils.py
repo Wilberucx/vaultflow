@@ -13,5 +13,3 @@ def display_banner():
     text = Text(banner_text, style="bold magenta")
     
     console.print(text)
-    # Subtitulo y linea alineados a la izquierda por defecto
-    console.print("Herramienta de control de versiones para Obsidian")
