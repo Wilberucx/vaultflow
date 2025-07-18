@@ -8,7 +8,7 @@ from .git_utils import (
     is_git_repository, get_current_branch, get_last_commit,
     get_structured_git_status, stage_all_changes, git_init,
     create_initial_commit, rename_branch, branch_exists, create_branch,
-    commit_changes as git_commit_util
+    commit_changes as git_commit_util, checkout_branch
 )
 
 GITIGNORE_CONTENT = """
@@ -219,3 +219,39 @@ def push_changes_to_remote():
     else:
         click.secho(f"✗ Error durante la sincronización: {message}", fg="red")
         click.echo("  Asegúrate de haber configurado un repositorio remoto ('git remote add origin <URL>') y después ejecuta 'vaultflow push' de nuevo.")
+
+def start_experiment(name):
+    """
+    Lógica para iniciar un nuevo experimento.
+    Crea una nueva rama a partir de 'main' y se cambia a ella.
+    """
+    if not is_git_repository():
+        click.secho("✗ Error: Este no es un repositorio de Git.", fg="red")
+        return
+
+    # Validar que el nombre del experimento es válido para una rama
+    if not name or ' ' in name:
+        click.secho("✗ Error: El nombre del experimento no puede estar vacío ni contener espacios.", fg="red")
+        return
+    
+    experiment_branch_name = f"exp/{name}"
+
+    if branch_exists(experiment_branch_name):
+        click.secho(f"✗ Error: El experimento '{experiment_branch_name}' ya existe.", fg="red")
+        return
+
+    click.echo(f"Iniciando nuevo experimento '{name}'...")
+    
+    # Asegurarse de que partimos desde la rama 'main' para mantener la consistencia
+    click.echo("  -> Cambiando a la rama 'main' para asegurar una base limpia...")
+    if not checkout_branch('main'):
+        click.secho("✗ Error: No se pudo cambiar a la rama 'main'. Resuelve cualquier conflicto y vuelve a intentarlo.", fg="red")
+        return
+    
+    click.echo(f"  -> Creando la nueva rama de experimento: '{experiment_branch_name}'...")
+    if create_branch(experiment_branch_name) and checkout_branch(experiment_branch_name):
+        click.secho(f"\n✓ ¡Éxito! Ahora estás en la rama '{experiment_branch_name}'.", fg="green")
+        click.echo("  Puedes empezar a trabajar en tu experimento. Cuando termines, usa 'vaultflow finish-experiment'.")
+        show_status()
+    else:
+        click.secho("✗ Error al crear o cambiar a la nueva rama de experimento.", fg="red")

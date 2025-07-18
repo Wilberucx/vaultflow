@@ -118,3 +118,11 @@ def push_changes():
             except subprocess.CalledProcessError:
                 return False, "Falló el intento de configurar el rastreo remoto y hacer push."
         return False, f"Error desconocido durante el push: {error_output}"
+
+def checkout_branch(branch_name):
+    """Ejecuta 'git checkout' para cambiar a una rama existente."""
+    try:
+        subprocess.run(['git', 'checkout', branch_name], check=True, capture_output=True)
+        return True
+    except subprocess.CalledProcessError:
+        return False
