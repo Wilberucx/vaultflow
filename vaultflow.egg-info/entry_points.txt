@@ -1,0 +1,2 @@
+[console_scripts]
+vaultflow = vaultflow.cli:cli
