@@ -1,27 +1,175 @@
 import click
-from .git_utils import is_git_repository
-import subprocess
+import os
+from datetime import datetime
+from rich.panel import Panel
+from rich.console import Console
+from .git_utils import *
+from .config import register_vault, is_managed_vault
+
+VAULTFLOW_GITIGNORE_HEADER = "# === Bloque gestionado por vaultflow ==="
+GITIGNORE_CONTENT = f"""
+{VAULTFLOW_GITIGNORE_HEADER}
+# Ignora archivos de sistema operativo
+.DS_Store,.AppleDouble,.LSOverride,Thumbs.db,Desktop.ini,*~
+# Ignora configuraciones de workspace y caches de Obsidian
+.obsidian/workspace.json,.obsidian/workspaces.json,.obsidian/plugins/*/data.json
+.obsidian/graph.json,.obsidian/starred.json,.obsidian/bookmarks.json
+# Ignora archivos de servicios de sincronizacion
+.stfolder,.stignore,.dropbox,.dropbox.attr,*.icloud
+# Ignora entorno virtual de Python
+venv/,__pycache__/,*.pyc
+""".replace(",", "\n")
+
+def validation_guard():
+    if is_managed_vault(): return True
+    click.secho("✗ Error: Este directorio no esta gestionado por vaultflow.", fg="red")
+    click.secho("  Por favor, ejecuta 'vaultflow init' en la raiz de tu vault para registrarlo.", fg="red")
+    return False
+
+def ensure_gitignore_is_updated():
+    if os.path.exists('.gitignore'):
+        with open('.gitignore', 'r+', encoding='utf-8') as f:
+            content = f.read()
+            if VAULTFLOW_GITIGNORE_HEADER not in content:
+                click.echo("Actualizando .gitignore con las reglas de vaultflow...")
+                f.write("\n" + GITIGNORE_CONTENT.strip() + "\n")
+                click.secho("✓ .gitignore actualizado.", fg="green")
+    else:
+        click.echo("Creando archivo .gitignore profesional...")
+        with open('.gitignore', 'w', encoding='utf-8') as f: f.write(GITIGNORE_CONTENT.strip())
+        click.secho("✓ .gitignore creado.", fg="green")
 
 def initialize_vault():
-    """
-    Lógica para el comando init.
-    Verifica si es un repo de Git, si no, lo inicializa.
-    """
-    click.echo("Iniciando la inicialización de vaultflow...")
-    
-    if is_git_repository():
-        click.secho("✓ El directorio ya es un repositorio de Git.", fg="green")
-    else:
-        click.secho("! Este directorio no es un repositorio de Git.", fg="yellow")
-        if click.confirm("¿Quieres inicializar un nuevo repositorio de Git aquí?"):
-            try:
-                subprocess.run(['git', 'init'], check=True)
-                click.secho("✓ Repositorio de Git creado exitosamente.", fg="green")
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                click.secho("✗ Error: No se pudo ejecutar 'git init'. Asegúrate de que Git esté instalado y en tu PATH.", fg="red")
-                return
-        else:
-            click.secho("Operación cancelada. vaultflow requiere un repositorio de Git para funcionar.", fg="red")
-            return
+    click.echo("Iniciando vaultflow...")
+    is_new_repo = not is_git_repository()
+    if is_new_repo:
+        if not click.confirm("Este directorio no es un repo Git. ¿Quieres inicializar uno?"):
+            click.secho("Operacion cancelada.", fg="red"); return
+        git_init()
 
-    click.echo("\nLógica adicional (crear ramas, config) por implementar.")
+    repo_is_empty = "No hay commits todavia" in get_last_commit()
+    if is_new_repo or repo_is_empty:
+        click.secho("✓ Configurando un repositorio limpio para vaultflow...", fg="green")
+        ensure_gitignore_is_updated()
+        stage_all_changes(); create_initial_commit()
+        current_head = get_current_branch()
+        if current_head and current_head != 'main': rename_branch(current_head, 'main')
+    else:
+        click.secho("✓ Repositorio Git con historial detectado.", fg="green")
+        ensure_gitignore_is_updated()
+        click.echo("Verificando configuracion de ramas...")
+        if not branch_exists('main'):
+            if branch_exists('master'):
+                click.secho("! No se encontro 'main', renombrando 'master'...", fg="yellow")
+                rename_branch('master', 'main')
+                click.secho("✓ Rama 'main' configurada.", fg="green")
+            else:
+                click.secho("! No se encontro la rama 'main' ni 'master'.", fg="yellow")
+        else: click.secho("✓ Rama 'main' encontrada.", fg="green")
+
+    # Asegurar que 'experiment' siempre exista al final del proceso
+    if not branch_exists('experiment'):
+        click.secho("! Creando rama 'experiment' que faltaba...", fg="yellow")
+        create_branch('experiment')
+    else: click.secho("✓ Rama 'experiment' encontrada.", fg="green")
+        
+    register_vault(os.getcwd())
+    click.secho("\n✓ ¡Exito! Este vault ahora esta gestionado por vaultflow.", fg="green")
+
+# ... (El resto del archivo 'commands.py' es idéntico y se omite por brevedad)
+def show_status():
+    if not validation_guard(): return
+    console = Console()
+    status_text = f"[bold]Rama actual:[/] [cyan]{get_current_branch()}[/]\n[bold]Ultimo backup:[/] [cyan]{get_last_commit()}[/]\n"
+    structured_status = get_structured_git_status()
+    if structured_status:
+        status_text += "\n"
+        if structured_status.get('staged'): status_text += "[bold]Cambios listos (staged):[/]\n" + "".join(f"[green]  {l}[/]\n" for l in structured_status['staged'])
+        if structured_status.get('modified'): status_text += "[bold]Cambios no preparados (modified):[/]\n" + "".join(f"[yellow]  {l}[/]\n" for l in structured_status['modified'])
+        if structured_status.get('untracked'): status_text += "[bold]Archivos no rastreados (untracked):[/]\n" + "".join(f"[red]  {p}[/]\n" for p in structured_status['untracked'])
+    else: status_text += "\n[bold]Estado:[/] [green]¡Tu vault esta al dia! No hay cambios pendientes."
+    console.print(Panel(status_text, title="[bold magenta]Estado de vaultflow[/]", expand=False, border_style="blue"))
+
+
+def create_local_backup():
+    if not validation_guard(): return
+    if not get_structured_git_status():
+        click.secho("✓ ¡Tu vault ya esta al dia! No hay nada que respaldar.", fg="green")
+        return
+    click.echo("Iniciando backup local completo...")
+    stage_all_changes()
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    commit_message = f"Backup vaultflow - {timestamp}"
+    if commit_changes(commit_message):
+        click.secho("\n✓ Backup local completado exitosamente.", fg="green")
+        show_status()
+    else: click.secho("✗ Error al crear el backup.", fg="red")
+
+
+def push_changes_to_remote():
+    if not validation_guard(): return
+    click.echo("Sincronizando con el repositorio remoto...")
+    success, message = push_changes()
+    if success: click.secho(f"✓ {message}", fg="green")
+    else: click.secho(f"✗ Error durante la sincronizacion:\n{message}", fg="red")
+
+
+def start_experiment(name):
+    if not validation_guard(): return
+    if not name or ' ' in name:
+        click.secho("✗ Error: El nombre del experimento no puede estar vacio ni contener espacios.", fg="red")
+        return
+    exp_name = f"exp/{name}"
+    if branch_exists(exp_name):
+        click.secho(f"✗ Error: El experimento '{exp_name}' ya existe.", fg="red")
+        return
+    click.echo(f"Iniciando nuevo experimento '{name}'...")
+    success, msg = checkout_branch('main')
+    if not success:
+        click.secho(f"✗ Error al cambiar a 'main':\n  Git dice: {msg}", fg="red"); return
+    if create_branch(exp_name) and checkout_branch(exp_name)[0]:
+        click.secho(f"\n✓ ¡Exito! Ahora estas en la rama '{exp_name}'.", fg="green")
+        show_status()
+    else: click.secho("✗ Error al crear o cambiar a la nueva rama.", fg="red")
+
+
+def finish_experiment(name):
+    if not validation_guard(): return
+    exp_name = f"exp/{name}"
+    if not branch_exists(exp_name):
+        click.secho(f"✗ Error: El experimento '{exp_name}' no existe.", fg="red")
+        return
+    click.echo(f"Finalizando el experimento '{name}'...")
+    success, msg = checkout_branch('main')
+    if not success:
+        click.secho(f"✗ Error al cambiar a 'main'.\n  Git dice: {msg}", fg="red"); return
+    status_code, msg = merge_branch(exp_name)
+    if status_code == 0:
+        click.secho(f"✓ {msg}", fg="green")
+        if click.confirm(f"¿Quieres borrar la rama de experimento '{exp_name}'?"):
+            if delete_branch(exp_name): click.secho("✓ Rama de experimento borrada.", fg="green")
+            else: click.secho("✗ No se pudo borrar la rama.", fg="yellow")
+    elif status_code == 1:
+        click.secho(f"✗ {msg}", fg="yellow")
+        click.echo("  Resuelve los conflictos manualmente y haz 'git commit'.")
+    else: click.secho(f"✗ {msg}", fg="red")
+
+def stage_changes():
+    if not validation_guard(): return
+    click.echo("Anadiendo todos los cambios al area de preparacion...")
+    if stage_all_changes():
+        click.secho("✓ Todos los cambios han sido anadidos.", fg="green")
+        show_status()
+    else: click.secho("✗ Error al ejecutar 'git add'.", fg="red")
+
+
+def commit_changes():
+    if not validation_guard(): return
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    commit_message = f"Backup vaultflow - {timestamp}"
+    click.echo(f"Creando backup con mensaje: '{commit_message}'...")
+    if commit_changes(commit_message):
+        click.secho("✓ Backup local creado exitosamente.", fg="green")
+        show_status()
+    else:
+        click.secho("✗ Error al crear el backup. Posible causa: No hay cambios preparados.", fg="red")
