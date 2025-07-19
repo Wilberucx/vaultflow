@@ -6,63 +6,34 @@ def is_git_repository():
     return os.path.isdir('.git')
 
 def git_init():
-    """Ejecuta 'git init'."""
-    try:
-        subprocess.run(['git', 'init'], check=True, capture_output=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+    try: subprocess.run(['git', 'init'], check=True, capture_output=True); return True
+    except: return False
 
 def create_initial_commit():
-    """Crea un commit inicial vacio."""
-    try:
-        subprocess.run(['git', 'commit', '--allow-empty', '-m', 'Initial commit by vaultflow'], check=True, capture_output=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+    try: subprocess.run(['git', 'commit', '--allow-empty', '-m', 'Initial commit by vaultflow'], check=True, capture_output=True); return True
+    except: return False
 
-def rename_branch(old_name, new_name):
-    """Renombra una rama de Git."""
-    try:
-        subprocess.run(['git', 'branch', '-m', old_name, new_name], check=True, capture_output=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+def rename_branch(old, new):
+    try: subprocess.run(['git', 'branch', '-m', old, new], check=True, capture_output=True); return True
+    except: return False
 
-def branch_exists(branch_name):
-    """Verifica si una rama especifica existe."""
-    try:
-        result = subprocess.run(['git', 'show-ref', '--verify', f'refs/heads/{branch_name}'], check=True, capture_output=True)
-        return result.returncode == 0
-    except subprocess.CalledProcessError:
-        return False
+def branch_exists(name):
+    try: return subprocess.run(['git', 'show-ref', '--verify', f'refs/heads/{name}'], check=True, capture_output=True).returncode == 0
+    except: return False
 
-def create_branch(branch_name):
-    """Crea una nueva rama."""
-    try:
-        subprocess.run(['git', 'branch', branch_name], check=True, capture_output=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+def create_branch(name):
+    try: subprocess.run(['git', 'branch', name], check=True, capture_output=True); return True
+    except: return False
 
 def get_current_branch():
-    """Obtiene el nombre de la rama actual de Git."""
-    try:
-        result = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], capture_output=True, text=True, check=True)
-        return result.stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
+    try: return subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], capture_output=True, text=True, check=True).stdout.strip()
+    except: return None
 
 def get_last_commit():
-    """Obtiene el ultimo commit en formato 'hash - mensaje'."""
-    try:
-        result = subprocess.run(['git', 'log', '-1', '--pretty=format:%h - %s'], capture_output=True, text=True, check=True)
-        return result.stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return "No hay commits todavia."
+    try: return subprocess.run(['git', 'log', '-1', '--pretty=format:%h - %s'], capture_output=True, text=True, check=True).stdout.strip()
+    except: return "No hay commits todavia."
 
 def get_structured_git_status():
-    """Obtiene el estado de Git y lo clasifica."""
     try:
         result = subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True, check=True)
         output = result.stdout.strip()
@@ -76,75 +47,52 @@ def get_structured_git_status():
                 if code[0] in ('A', 'M', 'D', 'R', 'C'): status_map['staged'].append(line.strip())
                 if code[1] == 'M': status_map['modified'].append(line.strip())
         return status_map if any(status_map.values()) else None
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
+    except: return None
 
 def stage_all_changes():
-    """Ejecuta 'git add .'."""
-    try:
-        subprocess.run(['git', 'add', '.'], check=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+    try: subprocess.run(['git', 'add', '.'], check=True, capture_output=True); return True
+    except: return False
 
 def commit_changes(message):
-    """Ejecuta 'git commit' con un mensaje."""
-    try:
-        subprocess.run(['git', 'commit', '-m', message], check=True, capture_output=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+    try: subprocess.run(['git', 'commit', '-m', message], check=True, capture_output=True); return True
+    except: return False
 
 def push_changes():
-    """Ejecuta 'git push' para enviar los cambios al repositorio remoto.
-    Intenta configurar el upstream si no existe.
-    """
+    """Intenta un git push, devolviendo el error específico si falla."""
     current_branch = get_current_branch()
-    if not current_branch:
-        return False, "No se pudo determinar la rama actual."
-
+    if not current_branch: return False, "No se pudo determinar la rama actual."
     try:
-        # Intenta un push normal primero
         subprocess.run(['git', 'push'], check=True, capture_output=True)
         return True, "Push exitoso."
     except subprocess.CalledProcessError as e:
-        # Si falla porque el upstream no esta configurado, lo configura y reintenta.
-        error_output = e.stderr.decode()
-        if 'has no upstream branch' in error_output or 'no se ha especificado el push de destino' in error_output:
+        error_msg = e.stderr.decode()
+        if 'has no upstream branch' in error_msg:
             try:
-                # El comando es 'git push --set-upstream origin <branch>'
                 subprocess.run(['git', 'push', '--set-upstream', 'origin', current_branch], check=True, capture_output=True)
                 return True, "Se configuro el rastreo remoto y se realizo el push exitosamente."
-            except subprocess.CalledProcessError:
-                return False, "Fallo el intento de configurar el rastreo remoto y hacer push."
-        return False, f"Error desconocido durante el push: {error_output}"
+            except subprocess.CalledProcessError as e2:
+                return False, f"Fallo al configurar el upstream: {e2.stderr.decode()}"
+        return False, error_msg
 
 def checkout_branch(branch_name):
-    """Ejecuta 'git checkout' para cambiar a una rama existente."""
+    """Intenta cambiar de rama, devolviendo el error específico si falla."""
     try:
         subprocess.run(['git', 'checkout', branch_name], check=True, capture_output=True)
-        return True
-    except subprocess.CalledProcessError:
-        return False
+        return True, "Checkout exitoso."
+    except subprocess.CalledProcessError as e:
+        return False, e.stderr.decode()
 
 def merge_branch(branch_name):
-    """
-    Ejecuta 'git merge' para fusionar una rama en la actual.
-    Devuelve un código de estado: 0=éxito, 1=conflicto, 2=error.
-    """
     try:
         subprocess.run(['git', 'merge', '--no-ff', branch_name], check=True, capture_output=True)
-        return 0, "Fusión completada exitosamente."
+        return 0, "Fusion completada exitosamente."
     except subprocess.CalledProcessError as e:
-        if 'conflicto' in e.stderr.decode().lower() or 'conflict' in e.stderr.decode().lower():
+        error_msg = e.stderr.decode().lower()
+        if 'conflicto' in error_msg or 'conflict' in error_msg:
             subprocess.run(['git', 'merge', '--abort'], check=False, capture_output=True)
-            return 1, "Conflicto de fusión detectado. La fusión ha sido abortada."
-        return 2, f"Error durante la fusión: {e.stderr.decode()}"
+            return 1, "Conflicto de fusion detectado. La fusion ha sido abortada."
+        return 2, f"Error durante la fusion: {error_msg}"
 
 def delete_branch(branch_name):
-    """Ejecuta 'git branch -d' para borrar una rama local."""
-    try:
-        subprocess.run(['git', 'branch', '-d', branch_name], check=True, capture_output=True)
-        return True
-    except subprocess.CalledProcessError:
-        return False
+    try: subprocess.run(['git', 'branch', '-d', branch_name], check=True, capture_output=True); return True
+    except: return False
