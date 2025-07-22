@@ -1,8 +1,21 @@
-# VaultFlow 🌊
+# VaultFlow
 
 Una herramienta CLI moderna y elegante para gestionar tus Vaults de Obsidian con Git de manera profesional y eficiente.
 
-## 🚀 Características
+<details>
+<summary><strong>Ver Tabla de Contenidos</strong></summary>
+
+- [Características](#características)
+- [Instalación](#instalación)
+- [Uso Rápido](#uso-rápido)
+- [Testing y Desarrollo](#testing-y-desarrollo)
+- [Contribuir](#contribuir)
+- [Licencia](#licencia)
+- [Agradecimientos](#agradecimientos)
+
+</details>
+
+## Características
 
 - **Gestión Git Automatizada**: Inicializa y configura repositorios Git optimizados para Obsidian
 - **Sistema de Experimentos**: Crea y gestiona ramas experimentales para probar ideas sin riesgo
@@ -12,7 +25,7 @@ Una herramienta CLI moderna y elegante para gestionar tus Vaults de Obsidian con
 - **Logging Completo**: Historial detallado de todas las operaciones
 - **Gitignore Profesional**: Configuración automática para ignorar archivos innecesarios
 
-## 📦 Instalación
+## Instalación
 
 ### Desde el código fuente
 
@@ -31,7 +44,7 @@ pip install -e .
 - rich
 - pyfiglet
 
-## 🎯 Uso Rápido
+## Uso Rápido
 
 ### Inicializar un Vault
 
@@ -51,191 +64,51 @@ vaultflow backup
 
 # Sincronizar con remoto
 vaultflow push
-
-# Preparar cambios
-vaultflow stage
-
-# Crear commit
-vaultflow commit
-
-# Ver historial
-vaultflow log
-
-# Modo interactivo
-vaultflow
 ```
 
-### Sistema de Experimentos
+## Testing y Desarrollo
+
+Para contribuir al desarrollo de vaultflow o ejecutar la suite de tests localmente, sigue estos pasos.
+
+### 1. Configuración del Entorno
+
+Es altamente recomendable utilizar un entorno virtual para aislar las dependencias del proyecto.
 
 ```bash
-# Iniciar un experimento
-vaultflow start-experiment mi-idea
+# Navega a la raíz del proyecto
+cd vaultflow
 
-# Finalizar y fusionar experimento
-vaultflow finish-experiment mi-idea
+# Crea un entorno virtual
+python -m venv venv
+
+# Activa el entorno virtual
+# En Windows:
+venv\Scripts\activate
+# En macOS/Linux:
+source venv/bin/activate
 ```
 
-## 🖥️ Modo Interactivo
+### 2. Instalación de Dependencias
 
-Ejecuta `vaultflow` sin argumentos para acceder al menú interactivo:
-
-```
-VAULTFLOW
-
-Bienvenido a vaultflow, una herramienta para gestionar tus vaults de Obsidian con Git.
-
-============================================================
-? ¿Qué te gustaría hacer?
-❯ Ver Estado del Vault
-  Crear Backup Local
-  Sincronizar con Remoto (Push)
-  Iniciar un Nuevo Experimento
-  Finalizar un Experimento
-  Salir
-```
-
-## 🏗️ Arquitectura del Proyecto
-
-```
-vaultflow/
-├── cli.py          # Interfaz de línea de comandos (Click)
-├── commands.py     # Lógica de negocio principal
-├── git_utils.py    # Operaciones Git encapsuladas
-├── interactive.py  # Menú interactivo (InquirerPy)
-├── config.py       # Gestión de configuración
-├── logs.py         # Sistema de logging
-└── utils.py        # Utilidades generales
-```
-
-## ⚙️ Configuración Automática
-
-VaultFlow configura automáticamente:
-
-### Estructura de Ramas
-- **main**: Rama principal estable
-- **experiment**: Rama base para experimentos
-- **exp/[nombre]**: Ramas de experimentos específicos
-
-### Gitignore Inteligente
-```gitignore
-# Archivos de sistema operativo
-.DS_Store
-Thumbs.db
-Desktop.ini
-
-# Configuraciones de Obsidian
-.obsidian/workspace.json
-.obsidian/workspaces.json
-.obsidian/plugins/*/data.json
-
-# Servicios de sincronización
-.dropbox
-*.icloud
-.stfolder
-
-# VaultFlow
-.vaultflow_log.json
-```
-
-## 📊 Sistema de Logging
-
-Todas las operaciones se registran en `.vaultflow_log.json`:
-
-```json
-[
-  {
-    "timestamp": "2024-01-15T10:30:00",
-    "command": "backup",
-    "success": true,
-    "message": "Backup vaultflow - 2024-01-15 10:30:00"
-  }
-]
-```
-
-## 🔧 Comandos Detallados
-
-### `vaultflow init`
-Inicializa VaultFlow en tu vault:
-- Crea/configura repositorio Git
-- Establece estructura de ramas
-- Configura .gitignore optimizado
-- Registra el vault en la configuración
-
-### `vaultflow status`
-Muestra el estado actual:
-- Rama activa
-- Último commit
-- Cambios pendientes (staged/modified/untracked)
-
-### `vaultflow backup`
-Crea un backup local completo:
-- Añade todos los cambios al staging
-- Crea commit con timestamp
-- Muestra estado actualizado
-
-### `vaultflow push`
-Sincroniza con repositorio remoto:
-- Configura upstream automáticamente si es necesario
-- Maneja errores de conexión
-- Reporta estado de la operación
-
-## 🎨 Características Visuales
-
-- **Banner ASCII**: Logo elegante con pyfiglet
-- **Colores Rich**: Salida colorizada y formateada
-- **Paneles Informativos**: Estado organizado en paneles
-- **Indicadores de Estado**: ✓ Éxito, ✗ Error, ! Advertencia
-
-## 🛡️ Validaciones y Seguridad
-
-- Verificación de vault gestionado antes de operaciones
-- Validación de nombres de experimentos
-- Manejo seguro de conflictos de merge
-- Backup automático antes de operaciones críticas
-
-## 📝 Ejemplos de Uso
-
-### Flujo de Trabajo Típico
+Una vez activado el entorno virtual, instala el proyecto en "modo editable" junto con las dependencias de desarrollo (como pytest). Esto se hace con la opción `[test]`.
 
 ```bash
-# 1. Inicializar vault
-cd mi-vault-obsidian
-vaultflow init
-
-# 2. Trabajar normalmente en Obsidian
-# ... editar notas ...
-
-# 3. Crear backup periódico
-vaultflow backup
-
-# 4. Experimentar con una idea
-vaultflow start-experiment nueva-estructura
-
-# 5. Trabajar en el experimento
-# ... hacer cambios experimentales ...
-
-# 6. Si funciona, fusionar
-vaultflow finish-experiment nueva-estructura
-
-# 7. Sincronizar con remoto
-vaultflow push
+pip install -e ".[test]"
 ```
 
-### Gestión Multi-Vault
+Este comando instala todas las dependencias necesarias para usar la herramienta y, además, las herramientas para ejecutar la suite de tests.
+
+### 3. Ejecución de los Tests
+
+Con las dependencias instaladas, puedes ejecutar la suite completa de tests automatizados con un simple comando:
 
 ```bash
-# VaultFlow recuerda múltiples vaults
-cd /ruta/vault-personal
-vaultflow init
-
-cd /ruta/vault-trabajo  
-vaultflow init
-
-# El menú interactivo permite navegar entre vaults registrados
-vaultflow
+pytest
 ```
 
-## 🤝 Contribuir
+Una salida exitosa mostrará un listado de los tests ejecutados y finalizará con un mensaje de "passed" en verde.
+
+## Contribuir
 
 1. Fork el proyecto
 2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
@@ -243,11 +116,11 @@ vaultflow
 4. Push a la rama (`git push origin feature/AmazingFeature`)
 5. Abre un Pull Request
 
-## 📄 Licencia
+## Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
+Este proyecto está bajo la Licencia MIT. Ver [LICENSE](LICENSE) para más detalles.
 
-## 🙏 Agradecimientos
+## Agradecimientos
 
 - [Obsidian](https://obsidian.md/) - La increíble herramienta de notas
 - [Click](https://click.palletsprojects.com/) - Framework CLI elegante
@@ -256,4 +129,4 @@ Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
 
 ---
 
-**VaultFlow** - Gestiona tus ideas con la potencia de Git y la simplicidad de un click 🌊
+**VaultFlow** - Gestiona tus ideas con la potencia de Git y la simplicidad de un click

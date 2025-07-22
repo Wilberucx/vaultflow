@@ -2,6 +2,8 @@ import pytest
 import subprocess
 import os
 from vaultflow.commands import initialize_vault, start_experiment
+from vaultflow.config import register_vault
+from vaultflow.git_utils import git_init
 
 
 def test_cannot_start_experiment_when_already_in_experiment(tmp_path, capsys):
@@ -15,7 +17,11 @@ def test_cannot_start_experiment_when_already_in_experiment(tmp_path, capsys):
     os.chdir(test_dir)
     
     # Configurar un repositorio vaultflow válido
-    initialize_vault()
+    git_init()
+    register_vault(str(test_dir))  # Registra el vault en la config
+    # Crea un commit inicial para que exista la rama 'main'
+    subprocess.run(['git', 'commit', '--allow-empty', '-m', 'Initial commit'], capture_output=True)
+    subprocess.run(['git', 'branch', '-m', 'main'], capture_output=True)
     
     # Entrar en un estado de experimento inicial
     start_experiment('primer-experimento')
