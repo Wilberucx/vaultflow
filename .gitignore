@@ -1,0 +1,65 @@
+# Archivo .gitignore profesional para el proyecto vaultflow
+# ---------------------------------------------------------
+
+# 1. Ignorar Entornos Virtuales de Python
+# ---------------------------------------
+# Nombres de directorio comunes para entornos virtuales. La barra al final
+# asegura que solo ignoremos directorios, no archivos con el mismo nombre.
+.venv/
+venv/
+env/
+.env/
+
+# 2. Ignorar artefactos de Python
+# -------------------------------
+# Caché de bytecode y archivos optimizados
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Artefactos de empaquetado y distribución
+build/
+dist/
+wheels/
+*.egg-info/
+*.egg
+
+# 3. Ignorar archivos de herramientas de desarrollo y testing
+# ----------------------------------------------------------
+# Caché y reportes de Pytest
+.pytest_cache/
+.tox/
+
+# Reportes de cobertura de código
+.coverage
+.coverage.*
+htmlcov/
+nosetests.xml
+coverage.xml
+
+# 4. Ignorar archivos de configuración de IDEs y editores
+# -------------------------------------------------------
+# Visual Studio Code
+.vscode/
+
+# JetBrains (PyCharm, etc.)
+.idea/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# 5. Ignorar archivos de sistema operativo
+# ----------------------------------------
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# 6. Ignorar archivos de dependencias y logs de paquetes
+# ------------------------------------------------------
+pip-log.txt
+pip-delete-this-directory.txt
