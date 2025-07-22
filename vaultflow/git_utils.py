@@ -66,6 +66,13 @@ def push_changes():
         return True, "Push exitoso."
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.decode()
+        if 'No configured push destination' in error_msg:
+            return False, """No se encontró un repositorio remoto (origin) configurado para este vault.
+  Para poder sincronizar, primero debes añadirlo manualmente con:
+
+  git remote add origin URL_DE_TU_REPOSITORIO
+
+  Luego, intenta 'vaultflow push' de nuevo."""
         if 'has no upstream branch' in error_msg:
             try:
                 subprocess.run(['git', 'push', '--set-upstream', 'origin', current_branch], check=True, capture_output=True)

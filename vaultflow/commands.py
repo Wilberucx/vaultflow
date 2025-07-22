@@ -107,8 +107,24 @@ def push_changes_to_remote():
 
 def start_experiment(name):
     if not validation_guard(): return
+    
+    # Verificar si ya estamos en un experimento (zona de seguridad)
+    current_branch = get_current_branch()
+    if current_branch and current_branch.startswith('exp/'):
+        click.secho("✗ Error: Ya te encuentras en un experimento.", fg="red")
+        click.secho(f"  Estás en la rama: {current_branch}", fg="red")
+        click.secho("", fg="red")
+        click.secho("  No puedes iniciar un experimento dentro de otro.", fg="red")
+        click.secho("  Para empezar uno nuevo, primero finaliza el actual con 'vaultflow finish-experiment' o vuelve a la rama principal con 'git checkout main'.", fg="red")
+        return
+    
     exp_name = f"exp/{name}"
-    if not name or ' ' in name: click.secho("✗ ...", fg="red"); return
+    if not name :
+        return
+    if  ' ' in name: 
+        click.secho("\n✗ Error: El nombre del experimento contiene espacios ...", fg="red", bold=True),
+        click.secho("  Por favor, usa un nombre sin espacios.", fg="yellow")
+        return
     if branch_exists(exp_name): click.secho(f"✗ Error: El experimento '{exp_name}' ya existe.", fg="red"); return
     success, msg = checkout_branch('main')
     if not success:
