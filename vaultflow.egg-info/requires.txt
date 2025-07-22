@@ -1,4 +1,0 @@
-click
-inquirerpy
-pyfiglet
-rich

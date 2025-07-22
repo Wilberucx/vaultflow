@@ -2,3 +2,4 @@ inquirerpy
 pyfiglet
 rich
 click
+pytest
