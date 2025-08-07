@@ -71,6 +71,20 @@ vaultflow push
 
 Para contribuir al desarrollo de vaultflow o ejecutar la suite de tests localmente, sigue estos pasos.
 
+### Instalación para Usuarios Finales
+
+> ⚠️ **Nota**: vaultflow no está disponible en PyPI aún. Por ahora, solo se puede instalar desde el código fuente.
+
+Los usuarios finales pueden instalar vaultflow directamente desde GitHub:
+
+```bash
+# Instalar la última versión desde GitHub
+pip install git+https://github.com/Wilberucx/vaultflow.git
+
+# Para actualizar a la última versión
+pip install --upgrade git+https://github.com/Wilberucx/vaultflow.git
+```
+
 ### 1. Configuración del Entorno
 
 Es altamente recomendable utilizar un entorno virtual para aislar las dependencias del proyecto.
@@ -108,6 +122,43 @@ pytest
 ```
 
 Una salida exitosa mostrará un listado de los tests ejecutados y finalizará con un mensaje de "passed" en verde.
+
+### 4. Script de Actualización para Desarrolladores
+
+Para desarrolladores que trabajan con el código fuente y necesitan actualizar frecuentemente su instalación local de vaultflow, existe un script de conveniencia:
+
+```bash
+# Desde el directorio raíz del proyecto
+python update_vaultflow.py
+```
+
+Este script:
+- Desinstala automáticamente la versión anterior de vaultflow
+- Reinstala la versión actual en modo desarrollo (`pip install -e .`)
+- Verifica que la instalación fue exitosa
+- Muestra información sobre las nuevas funcionalidades disponibles
+
+> 📝 **Nota para desarrolladores**: Este script solo funciona si tienes el código fuente clonado localmente. Los usuarios finales deben usar las instrucciones de instalación desde GitHub mencionadas arriba.
+
+### 5. Flujo de Desarrollo Recomendado
+
+```bash
+# 1. Clonar y configurar
+git clone https://github.com/Wilberucx/vaultflow.git
+cd vaultflow
+python -m venv venv
+source venv/bin/activate  # o venv\Scripts\activate en Windows
+
+# 2. Instalación inicial
+pip install -e ".[test]"
+
+# 3. Después de hacer cambios
+python update_vaultflow.py  # Actualizar instalación
+pytest                     # Ejecutar tests
+
+# 4. Probar funcionalmente
+vaultflow --help           # Verificar que funciona
+```
 
 ## Contribuir
 

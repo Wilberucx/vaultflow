@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
 """
-Script para actualizar vaultflow en las variables de entorno
-desde el repositorio local de desarrollo.
+Script de actualización para desarrolladores de vaultflow.
 
-Este script:
-1. Instala/reinstala la versión actual del repositorio
-2. Actualiza la instalación en las variables de entorno
+Este script facilita el proceso de desarrollo al:
+1. Desinstalar automáticamente la versión anterior de vaultflow
+2. Reinstalar la versión actual desde el código fuente en modo desarrollo
+3. Verificar que la instalación fue exitosa
+
+Uso:
+    python update_vaultflow.py
+
+Requisitos:
+    - Ejecutar desde el directorio raíz del proyecto vaultflow
+    - Tener el código fuente clonado localmente
+    - Python y pip instalados
 """
 
 import subprocess
