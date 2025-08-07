@@ -39,3 +39,20 @@ def is_managed_vault():
     """Verifica si el directorio actual está registrado."""
     current_path = os.path.abspath(os.getcwd())
     return current_path in get_managed_vaults()
+
+def get_current_vault_info():
+    """Obtiene información del vault actual."""
+    current_path = os.path.abspath(os.getcwd())
+    vault_name = os.path.basename(current_path)
+    managed_vaults = get_managed_vaults()
+    
+    return {
+        'name': vault_name,
+        'path': current_path,
+        'is_managed': current_path in managed_vaults,
+        'total_managed_vaults': len(managed_vaults)
+    }
+
+def get_vault_name_from_path(path):
+    """Extrae el nombre del vault desde su ruta."""
+    return os.path.basename(path)

@@ -1,7 +1,7 @@
 from InquirerPy import inquirer
 from InquirerPy.base.control import Choice
 from rich.console import Console
-from .commands import initialize_vault, show_status, create_local_backup, push_changes_to_remote, start_experiment, finish_experiment
+from .commands import initialize_vault, show_status, create_local_backup, push_changes_to_remote, start_experiment, finish_experiment, show_backups, show_vaults
 from .config import is_managed_vault, get_managed_vaults
 
 def _show_managed_vault_menu():
@@ -11,6 +11,8 @@ def _show_managed_vault_menu():
         "status": show_status,
         "backup": create_local_backup,
         "push": push_changes_to_remote,
+        "backups": show_backups,
+        "vaults": show_vaults,
     }
 
     while True:
@@ -21,6 +23,8 @@ def _show_managed_vault_menu():
                 Choice("status", name="Ver Estado del Vault"),
                 Choice("backup", name="Crear Backup Local"),
                 Choice("push", name="Sincronizar con Remoto (Push)"),
+                Choice("backups", name="Ver Backups Disponibles"),
+                Choice("vaults", name="Ver Todos los Vaults"),
                 Choice("start_exp", name="Iniciar un Nuevo Experimento"),
                 Choice("finish_exp", name="Finalizar un Experimento"),
                 Choice(None, name="Salir")

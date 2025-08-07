@@ -5,7 +5,7 @@ from datetime import datetime
 from rich.panel import Panel
 from rich.console import Console
 from .git_utils import *
-from .config import register_vault, is_managed_vault
+from .config import register_vault, is_managed_vault, get_current_vault_info, get_managed_vaults, get_vault_name_from_path
 from .logs import log_operation, get_log_file_path
 # La importación clave que se había perdido:
 from .git_utils import commit_changes as git_commit_util
@@ -164,15 +164,57 @@ def finish_experiment(name):
 def show_status():
     if not validation_guard(): return
     console = Console()
-    status_text = f"[bold]Rama actual:[/] [cyan]{get_current_branch()}[/]\n[bold]Ultimo backup:[/] [cyan]{get_last_commit()}[/]\n"
+    
+    # Obtener información del vault actual
+    vault_info = get_current_vault_info()
+    managed_vaults = get_managed_vaults()
+    
+    # Sección de información del vault
+    vault_section = f"[bold blue]Vault actual:[/] [cyan]{vault_info['name']}[/]\n"
+    vault_section += f"[bold blue]Ubicación:[/] [dim]{vault_info['path']}[/]\n"
+    if vault_info['total_managed_vaults'] > 1:
+        vault_section += f"[bold blue]Vaults gestionados:[/] [yellow]{vault_info['total_managed_vaults']}[/]\n"
+        vault_section += "[dim]Usa 'vaultflow vaults' para ver todos o cambiar de vault[/]\n"
+    
+    # Sección de Git
+    git_section = f"\n[bold]Rama actual:[/] [cyan]{get_current_branch()}[/]\n"
+    git_section += f"[bold]Ultimo backup:[/] [cyan]{get_last_commit()}[/]\n"
+    
+    # Sección de backups recientes
+    backups = get_backup_commits(5)
+    if backups:
+        git_section += "\n[bold green]Backups recientes:[/]\n"
+        for i, backup in enumerate(backups):
+            marker = "[green]•[/]" if i == 0 else "[dim]•[/]"
+            git_section += f"  {marker} [cyan]{backup['hash']}[/] - {backup['date']} - [dim]{backup['message']}[/]\n"
+        git_section += "[dim]Usa 'vaultflow backups' para ver más opciones[/]\n"
+    
+    # Sección de estado de cambios
+    status_section = ""
     structured_status = get_structured_git_status()
     if structured_status:
-        status_text += "\n"
-        if structured_status.get('staged'): status_text += "[bold]Cambios listos (staged):[/]\n" + "".join(f"[green]  {l}[/]\n" for l in structured_status['staged'])
-        if structured_status.get('modified'): status_text += "[bold]Cambios no preparados (modified):[/]\n" + "".join(f"[yellow]  {l}[/]\n" for l in structured_status['modified'])
-        if structured_status.get('untracked'): status_text += "[bold]Archivos no rastreados (untracked):[/]\n" + "".join(f"[red]  {p}[/]\n" for p in structured_status['untracked'])
-    else: status_text += "\n[bold]Estado:[/] [green]¡Tu vault esta al dia! No hay cambios pendientes."
-    console.print(Panel(status_text, title="[bold magenta]Estado de vaultflow[/]", expand=False, border_style="magenta"))
+        status_section += "\n"
+        if structured_status.get('staged'):
+            status_section += "[bold]Cambios listos (staged):[/]\n"
+            status_section += "".join(f"[green]  {l}[/]\n" for l in structured_status['staged'])
+        if structured_status.get('modified'):
+            status_section += "[bold]Cambios no preparados (modified):[/]\n"
+            status_section += "".join(f"[yellow]  {l}[/]\n" for l in structured_status['modified'])
+        if structured_status.get('untracked'):
+            status_section += "[bold]Archivos no rastreados (untracked):[/]\n"
+            status_section += "".join(f"[red]  {p}[/]\n" for p in structured_status['untracked'])
+    else:
+        status_section += "\n[bold]Estado:[/] [green]¡Tu vault esta al dia! No hay cambios pendientes.[/]"
+    
+    # Combinar todas las secciones
+    full_status = vault_section + git_section + status_section
+    
+    console.print(Panel(
+        full_status, 
+        title="[bold magenta]Estado de vaultflow[/]", 
+        expand=False, 
+        border_style="magenta"
+    ))
 
 def stage_changes():
     if not validation_guard(): return
@@ -206,3 +248,57 @@ def show_logs():
         status = "[green]✓ EXITO[/green]" if entry["success"] else "[red]✗ FALLO[/red]"
         ts = datetime.fromisoformat(entry["timestamp"]).strftime('%Y-%m-%d %H:%M:%S')
         console.print(f"[{ts}] - {status} - [bold]{entry['command']}[/bold]: {entry['message']}")
+
+def show_backups():
+    """Muestra los backups disponibles con opciones interactivas."""
+    if not validation_guard(): return
+    
+    console = Console()
+    backups = get_backup_commits(15)  # Obtener más backups para la vista detallada
+    
+    if not backups:
+        console.print("[yellow]No se encontraron backups de vaultflow en este vault.[/yellow]")
+        return
+    
+    console.print("[bold magenta]Backups Disponibles[/bold magenta]")
+    console.print("[magenta]" + "=" * 60 + "[/magenta]")
+    
+    for i, backup in enumerate(backups):
+        status_indicator = "[green]● ACTUAL[/green]" if i == 0 else "[dim]○[/dim]"
+        console.print(f"{status_indicator} [cyan]{backup['hash']}[/cyan] - [yellow]{backup['date']}[/yellow]")
+        console.print(f"    [dim]{backup['message']}[/dim]")
+        console.print()
+    
+    console.print("[dim]Para navegar a un backup específico, usa: git checkout <hash>[/dim]")
+    console.print("[dim]Para volver al estado más reciente, usa: git checkout main[/dim]")
+
+def show_vaults():
+    """Muestra todos los vaults gestionados con opción de cambiar."""
+    console = Console()
+    managed_vaults = get_managed_vaults()
+    current_vault = get_current_vault_info()
+    
+    if len(managed_vaults) == 0:
+        console.print("[yellow]No hay vaults gestionados por vaultflow.[/yellow]")
+        return
+    elif len(managed_vaults) == 1:
+        console.print(f"[yellow]Solo hay un vault gestionado: [cyan]{current_vault['name']}[/cyan][/yellow]")
+        return
+    
+    console.print("[bold magenta]Vaults Gestionados por vaultflow[/bold magenta]")
+    console.print("[magenta]" + "=" * 70 + "[/magenta]")
+    
+    for vault_path in managed_vaults:
+        vault_name = get_vault_name_from_path(vault_path)
+        is_current = vault_path == current_vault['path']
+        
+        if is_current:
+            console.print(f"[green]● ACTUAL[/green] [bold cyan]{vault_name}[/bold cyan]")
+            console.print(f"    [green]{vault_path}[/green]")
+        else:
+            console.print(f"[dim]○[/dim] [yellow]{vault_name}[/yellow]")
+            console.print(f"    [dim]{vault_path}[/dim]")
+        console.print()
+    
+    console.print("[dim]Para cambiar a otro vault, usa: cd \"ruta_del_vault\" && vaultflow[/dim]")
+    console.print("[dim]O ejecuta vaultflow desde un directorio no gestionado y selecciona el vault deseado.[/dim]")

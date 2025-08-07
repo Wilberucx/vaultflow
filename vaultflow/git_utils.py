@@ -103,3 +103,35 @@ def merge_branch(branch_name):
 def delete_branch(branch_name):
     try: subprocess.run(['git', 'branch', '-d', branch_name], check=True, capture_output=True); return True
     except: return False
+
+def get_backup_commits(limit=10):
+    """Obtiene los últimos commits que son backups de vaultflow."""
+    try:
+        result = subprocess.run(
+            ['git', 'log', '--grep=Backup vaultflow', f'-{limit}', '--pretty=format:%h|%s|%ad', '--date=short'],
+            capture_output=True, text=True, check=True
+        )
+        if not result.stdout.strip():
+            return []
+        
+        backups = []
+        for line in result.stdout.strip().split('\n'):
+            parts = line.split('|', 2)
+            if len(parts) == 3:
+                hash_val, message, date = parts
+                backups.append({
+                    'hash': hash_val,
+                    'message': message,
+                    'date': date
+                })
+        return backups
+    except:
+        return []
+
+def checkout_commit(commit_hash):
+    """Hace checkout a un commit específico."""
+    try:
+        subprocess.run(['git', 'checkout', commit_hash], check=True, capture_output=True)
+        return True, f"Cambiado a commit {commit_hash}"
+    except subprocess.CalledProcessError as e:
+        return False, e.stderr.decode()
