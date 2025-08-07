@@ -4,7 +4,7 @@ from .commands import (
     commit_changes, create_local_backup, push_changes_to_remote,
     start_experiment as start_experiment_command,
     finish_experiment as finish_experiment_command,
-    show_logs, show_backups, show_vaults  # <- Nuevos comandos agregados
+    show_logs, show_backups, show_vaults, discover_vaults  # <- Comando discover agregado
 )
 from .utils import display_banner
 from .interactive import launch_interactive_menu
@@ -73,6 +73,11 @@ def backups():
 def vaults():
     """Muestra todos los vaults gestionados."""
     show_vaults()
+
+@cli.command()
+def discover():
+    """Auto-descubre y registra vaults gestionados por vaultflow."""
+    discover_vaults()
 
 if __name__ == '__main__':
     cli()

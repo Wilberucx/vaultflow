@@ -5,7 +5,7 @@ from datetime import datetime
 from rich.panel import Panel
 from rich.console import Console
 from .git_utils import *
-from .config import register_vault, is_managed_vault, get_current_vault_info, get_managed_vaults, get_vault_name_from_path
+from .config import register_vault, is_managed_vault, get_current_vault_info, get_managed_vaults, get_vault_name_from_path, auto_discover_and_register_vaults, cleanup_invalid_vaults
 from .logs import log_operation, get_log_file_path
 # La importación clave que se había perdido:
 from .git_utils import commit_changes as git_commit_util
@@ -302,3 +302,50 @@ def show_vaults():
     
     console.print("[dim]Para cambiar a otro vault, usa: cd \"ruta_del_vault\" && vaultflow[/dim]")
     console.print("[dim]O ejecuta vaultflow desde un directorio no gestionado y selecciona el vault deseado.[/dim]")
+
+def discover_vaults():
+    """Auto-descubre y registra vaults gestionados por vaultflow."""
+    console = Console()
+    
+    console.print("[yellow]🔍 Buscando vaults gestionados por vaultflow...[/yellow]")
+    
+    # Limpiar vaults inválidos primero
+    removed_count = cleanup_invalid_vaults()
+    if removed_count > 0:
+        console.print(f"[dim]✓ Se eliminaron {removed_count} vault(s) inválido(s) de la configuración[/dim]")
+    
+    # Auto-descubrir nuevos vaults
+    discovered = auto_discover_and_register_vaults()
+    
+    if discovered:
+        console.print(f"\n[green]✓ Se encontraron y registraron {len(discovered)} vault(s):[/green]")
+        for vault_path in discovered:
+            vault_name = get_vault_name_from_path(vault_path)
+            console.print(f"  [cyan]•[/cyan] [bold]{vault_name}[/bold] - [dim]{vault_path}[/dim]")
+        
+        console.print(f"\n[bold]Total de vaults gestionados: {len(get_managed_vaults())}[/bold]")
+        console.print("[dim]Usa 'vaultflow vaults' para ver todos los vaults registrados.[/dim]")
+    else:
+        managed_count = len(get_managed_vaults())
+        if managed_count > 0:
+            console.print(f"[green]✓ No se encontraron vaults nuevos. Ya tienes {managed_count} vault(s) registrado(s).[/green]")
+        else:
+            console.print("[yellow]⚠ No se encontraron vaults gestionados por vaultflow en ubicaciones comunes.[/yellow]")
+            console.print("\n[dim]Ubicaciones buscadas:[/dim]")
+            home = os.path.expanduser("~")
+            locations = [
+                os.path.join(home, "Documents"),
+                os.path.join(home, "Obsidian.Vaults"),
+                os.path.join(home, "vaults"),
+                "C:\\Obsidian.Vaults",
+                "/Users/Shared/Obsidian.Vaults",
+                "/home/obsidian",
+                home
+            ]
+            for location in locations:
+                exists = "✓" if os.path.exists(location) else "✗"
+                console.print(f"  [dim]{exists} {location}[/dim]")
+            
+            console.print("\n[cyan]💡 Sugerencias:[/cyan]")
+            console.print("  • Ejecuta 'vaultflow init' en directorios que contengan vaults de Obsidian")
+            console.print("  • Los vaults deben tener Git inicializado y commits de vaultflow para ser auto-detectados")

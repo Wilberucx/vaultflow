@@ -2,7 +2,7 @@ from InquirerPy import inquirer
 from InquirerPy.base.control import Choice
 from rich.console import Console
 from .commands import initialize_vault, show_status, create_local_backup, push_changes_to_remote, start_experiment, finish_experiment, show_backups, show_vaults
-from .config import is_managed_vault, get_managed_vaults
+from .config import is_managed_vault, get_managed_vaults, auto_discover_and_register_vaults
 
 def _show_managed_vault_menu():
     """Muestra el menú de acciones para un vault gestionado."""
@@ -51,11 +51,21 @@ def _show_unmanaged_vault_menu():
     """Muestra el menú de bienvenida/inicio para un directorio no gestionado."""
     console = Console()
     
+    # Auto-detectar vaults si la configuración está vacía
+    registered_vaults = get_managed_vaults()
+    if not registered_vaults:
+        console.print("[yellow]No se encontraron vaults registrados. Buscando vaults existentes...[/yellow]")
+        discovered = auto_discover_and_register_vaults()
+        if discovered:
+            vault_names = [os.path.basename(path) for path in discovered]
+            console.print(f"[green]✓ Se encontraron y registraron {len(discovered)} vault(s): {', '.join(vault_names)}[/green]")
+            registered_vaults = get_managed_vaults()  # Actualizar lista
+        else:
+            console.print("[dim]No se encontraron vaults gestionados por vaultflow en ubicaciones comunes.[/dim]")
+    
     choices = [
         Choice("init", name="Iniciar vaultflow en este directorio"),
     ]
-    
-    registered_vaults = get_managed_vaults()
     for vault_path in registered_vaults:
         # Usamos el path como 'value' para saber a dónde ir
         choices.append(Choice(vault_path, name=f"Ir a vault existente: {vault_path}"))
