@@ -1,4 +1,5 @@
 # VaultFlow
+<img width="1151" height="451" alt="image" src="https://github.com/user-attachments/assets/a032d1d5-1ec1-4485-8148-c8405e5cdc7c" />
 
 Una herramienta CLI moderna y elegante para gestionar tus Vaults de Obsidian con Git de manera profesional y eficiente.
 
@@ -30,7 +31,7 @@ Una herramienta CLI moderna y elegante para gestionar tus Vaults de Obsidian con
 ### Desde el código fuente
 
 ```bash
-git clone https://github.com/tu_usuario/vaultflow.git
+git clone https://github.com/Wilberucx/vaultflow.git
 cd vaultflow
 pip install -e .
 ```
