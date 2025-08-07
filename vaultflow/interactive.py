@@ -67,9 +67,18 @@ def _show_unmanaged_vault_menu():
     if selection == "init":
         initialize_vault()
     elif selection is not None:
-        # No podemos cambiar el directorio por el usuario, pero podemos decirle cómo.
-        console.print("\nAccion recomendada:", style="bold green")
-        console.print(f"cd \"{selection}\"")
+        # Cambiar al directorio seleccionado y lanzar el menú de vault gestionado
+        import os
+        try:
+            os.chdir(selection)
+            console.print(f"\n[green]✓ Navegando a: {selection}[/green]")
+            console.print("[magenta]" + "="*60 + "[/magenta]")
+            # Lanzar el menú de vault gestionado
+            _show_managed_vault_menu()
+        except (OSError, FileNotFoundError) as e:
+            console.print(f"\n[red]✗ Error al cambiar al directorio: {e}[/red]")
+            console.print("\nAccion recomendada:", style="bold yellow")
+            console.print(f"cd \"{selection}\"")
 
 
 def launch_interactive_menu():
