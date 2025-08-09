@@ -36,9 +36,20 @@ def get_managed_vaults():
     return config.get("managed_vaults", [])
 
 def is_managed_vault():
-    """Verifica si el directorio actual está registrado."""
+    """Verifica si el directorio actual está registrado o es un vault válido."""
     current_path = os.path.abspath(os.getcwd())
-    return current_path in get_managed_vaults()
+    
+    # Verificar primero en el caché (config.json)
+    if current_path in get_managed_vaults():
+        return True
+    
+    # Si no está en el caché, verificar si es un vault válido
+    if is_vaultflow_repository(current_path):
+        # Auto-registrar vault encontrado
+        register_vault(current_path)
+        return True
+    
+    return False
 
 def get_current_vault_info():
     """Obtiene información del vault actual."""
@@ -60,12 +71,20 @@ def get_vault_name_from_path(path):
 def is_vaultflow_repository(path):
     """Verifica si un directorio es un repositorio gestionado por vaultflow."""
     try:
-        # Verificar si tiene Git
+        # Verificar si tiene la carpeta .vaultflow con el marcador
+        vaultflow_dir = os.path.join(path, '.vaultflow')
+        vault_lock_file = os.path.join(vaultflow_dir, 'vault.lock')
+        
+        # El marcador principal es el archivo vault.lock
+        if os.path.exists(vault_lock_file):
+            return True
+            
+        # Fallback: verificar si tiene Git y marcadores legacy
         git_dir = os.path.join(path, '.git')
         if not os.path.exists(git_dir):
             return False
-            
-        # Verificar si tiene .gitignore con header de vaultflow
+        
+        # Verificar marcador legacy en .gitignore (para compatibilidad)
         gitignore_path = os.path.join(path, '.gitignore')
         if os.path.exists(gitignore_path):
             with open(gitignore_path, 'r', encoding='utf-8') as f:
@@ -73,31 +92,18 @@ def is_vaultflow_repository(path):
                 if "# === Bloque gestionado por vaultflow ===" in content:
                     return True
         
-        # Verificar si tiene commits con patron de vaultflow
-        import subprocess
-        result = subprocess.run(
-            ['git', 'log', '--grep=Backup vaultflow', '--oneline', '-1'],
-            cwd=path,
-            capture_output=True,
-            text=True
-        )
-        return result.returncode == 0 and bool(result.stdout.strip())
+        return False
         
     except Exception:
         return False
 
 def scan_for_vaultflow_repos(search_paths=None):
-    """Escanea directorios comunes buscando repositorios de vaultflow."""
+    """Escanea directorios especificados buscando repositorios de vaultflow."""
     if search_paths is None:
         home = os.path.expanduser("~")
         search_paths = [
-            os.path.join(home, "Documents"),
-            os.path.join(home, "Obsidian.Vaults"),  # Obsidian default user home
-            os.path.join(home, "vaults"),
-            "C:\\Obsidian.Vaults",  # Obsidian default Windows global
-            "/Users/Shared/Obsidian.Vaults",  # macOS shared
-            "/home/obsidian",  # Linux common
-            home  # Home directory itself
+            os.path.join(home, "Documents"),  # Común en todos los OS
+            home  # Home directory - lugar más probable
         ]
     
     found_vaults = []
@@ -156,3 +162,62 @@ def auto_discover_and_register_vaults():
             new_vaults.append(vault_path)
     
     return new_vaults
+
+def create_vault_marker(vault_path):
+    """Crea el marcador de vault y la estructura .vaultflow."""
+    try:
+        from datetime import datetime
+        
+        vaultflow_dir = os.path.join(vault_path, '.vaultflow')
+        os.makedirs(vaultflow_dir, exist_ok=True)
+        
+        # Crear archivo vault.lock como marcador principal
+        vault_lock_file = os.path.join(vaultflow_dir, 'vault.lock')
+        if not os.path.exists(vault_lock_file):
+            lock_data = {
+                "created": datetime.now().isoformat(),
+                "version": "1.0",
+                "vault_name": os.path.basename(vault_path),
+                "vault_path": os.path.abspath(vault_path)
+            }
+            with open(vault_lock_file, 'w', encoding='utf-8') as f:
+                json.dump(lock_data, f, indent=2)
+        
+        # Crear archivo de configuración local del vault
+        config_file = os.path.join(vaultflow_dir, 'config.json')
+        if not os.path.exists(config_file):
+            local_config = {
+                "vault_name": os.path.basename(vault_path),
+                "created": datetime.now().isoformat(),
+                "settings": {
+                    "auto_backup": True,
+                    "backup_frequency": "daily"
+                }
+            }
+            with open(config_file, 'w', encoding='utf-8') as f:
+                json.dump(local_config, f, indent=2)
+        
+        return True
+    except Exception as e:
+        return False
+
+def get_local_vault_dir(vault_path=None):
+    """Obtiene la ruta del directorio .vaultflow local."""
+    if vault_path is None:
+        vault_path = os.getcwd()
+    return os.path.join(vault_path, '.vaultflow')
+
+def get_vault_lock_info(vault_path=None):
+    """Obtiene información del archivo vault.lock."""
+    if vault_path is None:
+        vault_path = os.getcwd()
+    
+    vault_lock_file = os.path.join(vault_path, '.vaultflow', 'vault.lock')
+    if not os.path.exists(vault_lock_file):
+        return None
+    
+    try:
+        with open(vault_lock_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except:
+        return None

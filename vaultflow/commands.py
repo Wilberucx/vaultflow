@@ -5,7 +5,7 @@ from datetime import datetime
 from rich.panel import Panel
 from rich.console import Console
 from .git_utils import *
-from .config import register_vault, is_managed_vault, get_current_vault_info, get_managed_vaults, get_vault_name_from_path, auto_discover_and_register_vaults, cleanup_invalid_vaults
+from .config import register_vault, is_managed_vault, get_current_vault_info, get_managed_vaults, get_vault_name_from_path, auto_discover_and_register_vaults, cleanup_invalid_vaults, create_vault_marker
 from .logs import log_operation, get_log_file_path
 # La importación clave que se había perdido:
 from .git_utils import commit_changes as git_commit_util
@@ -22,8 +22,9 @@ GITIGNORE_CONTENT = f"""
 .stfolder,.stignore,.dropbox,.dropbox.attr,*.icloud
 # Ignora entorno virtual de Python
 venv/,__pycache__/,*.pyc
-# Ignora el log de vaultflow
+# Ignora archivos de vaultflow (legacy y nuevos)
 .vaultflow_log.json
+.vaultflow/logs.json
 """.replace(",", "\n")
 
 # ... (Pega aquí la versión más reciente y completa de TODAS las funciones de `commands.py`,
@@ -72,6 +73,14 @@ def initialize_vault():
         click.secho("! Creando rama 'experiment'...", fg="yellow")
         create_branch('experiment')
     else: click.secho("✓ Rama 'experiment' encontrada.", fg="green")
+    
+    # Crear la estructura .vaultflow con marcador único
+    click.echo("Creando marcador de vault...")
+    if create_vault_marker(os.getcwd()):
+        click.secho("✓ Marcador de vault creado.", fg="green")
+    else:
+        click.secho("⚠ Advertencia: No se pudo crear el marcador de vault.", fg="yellow")
+    
     register_vault(os.getcwd())
     click.secho("\n✓ ¡Exito! Este vault ahora esta gestionado por vaultflow.", fg="green")
     log_operation("init", "Vault inicializado y registrado exitosamente.")
@@ -335,11 +344,6 @@ def discover_vaults():
             home = os.path.expanduser("~")
             locations = [
                 os.path.join(home, "Documents"),
-                os.path.join(home, "Obsidian.Vaults"),
-                os.path.join(home, "vaults"),
-                "C:\\Obsidian.Vaults",
-                "/Users/Shared/Obsidian.Vaults",
-                "/home/obsidian",
                 home
             ]
             for location in locations:

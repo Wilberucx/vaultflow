@@ -22,6 +22,9 @@ Una herramienta CLI moderna y elegante para gestionar tus Vaults de Obsidian con
 - **Sistema de Experimentos**: Crea y gestiona ramas experimentales para probar ideas sin riesgo
 - **Backups Inteligentes**: Crea respaldos locales automáticos con timestamps
 - **Sincronización Remota**: Push automático con configuración de upstream
+- **Gestión de Múltiples Vaults**: Administra varios vaults desde cualquier ubicación
+- **Navegación Automática**: Cambia automáticamente entre vaults sin salir de la herramienta
+- **Auto-recuperación**: Detecta y restaura vaults existentes automáticamente
 - **Interfaz Interactiva**: Menú intuitivo para usuarios que prefieren GUI
 - **Logging Completo**: Historial detallado de todas las operaciones
 - **Gitignore Profesional**: Configuración automática para ignorar archivos innecesarios
@@ -57,7 +60,7 @@ vaultflow init
 ### Comandos Principales
 
 ```bash
-# Ver estado del vault
+# Ver estado del vault actual
 vaultflow status
 
 # Crear backup local
@@ -65,7 +68,69 @@ vaultflow backup
 
 # Sincronizar con remoto
 vaultflow push
+
+# Ver todos los vaults gestionados
+vaultflow vaults
+
+# Ver backups disponibles
+vaultflow backups
+
+# Auto-descubrir vaults existentes
+vaultflow discover
 ```
+
+### Gestión de Múltiples Vaults
+
+VaultFlow puede gestionar múltiples vaults de Obsidian de manera eficiente:
+
+#### Navegación Automática
+Si ejecutas `vaultflow` desde un directorio que no está gestionado, la herramienta:
+- Detectará automáticamente tus vaults existentes
+- Te permitirá seleccionar a cuál quieres ir
+- Cambiará automáticamente al directorio del vault seleccionado
+- Lanzará el menú interactivo desde allí
+
+```bash
+# Desde cualquier directorio
+vaultflow
+# → Selecciona un vault → Navega automáticamente → Menú interactivo
+```
+
+#### Comandos de Gestión
+
+```bash
+# Listar todos los vaults gestionados
+vaultflow vaults
+# Muestra: nombre, ubicación, y vault actual marcado
+
+# Ver información detallada del vault actual
+vaultflow status
+# Incluye: backups recientes, cantidad de vaults, y estado git
+
+# Explorar backups del vault actual
+vaultflow backups
+# Lista backups con instrucciones para navegar entre ellos
+```
+
+#### Auto-recuperación
+Si pierdes tu configuración o instalas vaultflow en una nueva máquina:
+
+```bash
+# Busca automáticamente vaults existentes
+vaultflow discover
+```
+
+Esto buscará en ubicaciones comunes y detectará vaults basándose en:
+- Presencia de repositorio Git
+- Archivo `.gitignore` con marcadores de vaultflow
+- Historial de commits con patrones de backup de vaultflow
+
+#### Flujo de Trabajo Recomendado
+
+1. **Configuración inicial**: `vaultflow init` en cada vault
+2. **Uso diario**: Ejecuta `vaultflow` desde cualquier lugar
+3. **Cambio entre vaults**: Selecciona desde el menú o usa `vaultflow vaults`
+4. **Recuperación**: Si pierdes configuración, usa `vaultflow discover`
 
 ## Testing y Desarrollo
 
