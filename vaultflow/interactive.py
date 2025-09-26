@@ -1,3 +1,4 @@
+import os
 from InquirerPy import inquirer
 from InquirerPy.base.control import Choice
 from rich.console import Console
@@ -82,7 +83,6 @@ def _show_unmanaged_vault_menu():
         initialize_vault()
     elif selection is not None:
         # Cambiar al directorio seleccionado y lanzar el menú de vault gestionado
-        import os
         try:
             os.chdir(selection)
             console.print(f"\n[green]✓ Navegando a: {selection}[/green]")
