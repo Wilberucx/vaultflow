@@ -1,5 +1,17 @@
 import os
 import subprocess
+from .platform_utils import is_git_available, get_git_command
+
+def check_git_availability():
+    """
+    Verifica que Git esté disponible en el sistema.
+    Lanza una excepción si no está disponible.
+    """
+    if not is_git_available():
+        raise RuntimeError(
+            "Git no está instalado o no está disponible en el PATH del sistema.\n"
+            "Por favor, instala Git desde: https://git-scm.com/downloads"
+        )
 
 def is_git_repository():
     """Verifica si el directorio actual es un repositorio de Git."""
@@ -54,18 +66,27 @@ def stage_all_changes():
     except: return False
 
 def commit_changes(message):
-    try: subprocess.run(['git', 'commit', '-m', message], check=True, capture_output=True); return True
-    except: return False
+    """Realiza un git commit y devuelve (success, message) con salida detallada."""
+    try:
+        result = subprocess.run(['git', 'commit', '-m', message], check=True, capture_output=True, text=True)
+        stdout = (result.stdout or '').strip()
+        return True, (stdout if stdout else 'Commit creado exitosamente.')
+    except subprocess.CalledProcessError as e:
+        stderr = (e.stderr or '').strip()
+        stdout = (e.stdout or '').strip()
+        detail = stderr or stdout or 'Error desconocido de git commit.'
+        return False, detail
 
 def push_changes():
     """Intenta un git push, devolviendo el error específico si falla."""
     current_branch = get_current_branch()
     if not current_branch: return False, "No se pudo determinar la rama actual."
     try:
-        subprocess.run(['git', 'push'], check=True, capture_output=True)
+        subprocess.run(['git', 'push'], check=True, capture_output=True, text=True)
         return True, "Push exitoso."
     except subprocess.CalledProcessError as e:
-        error_msg = e.stderr.decode()
+        # Manejar stderr como texto (UTF-8)
+        error_msg = e.stderr if isinstance(e.stderr, str) else e.stderr.decode('utf-8', errors='replace')
         if 'No configured push destination' in error_msg:
             return False, """No se encontró un repositorio remoto (origin) configurado para este vault.
   Para poder sincronizar, primero debes añadirlo manualmente con:
@@ -75,28 +96,31 @@ def push_changes():
   Luego, intenta 'vaultflow push' de nuevo."""
         if 'has no upstream branch' in error_msg:
             try:
-                subprocess.run(['git', 'push', '--set-upstream', 'origin', current_branch], check=True, capture_output=True)
+                subprocess.run(['git', 'push', '--set-upstream', 'origin', current_branch], check=True, capture_output=True, text=True)
                 return True, "Se configuro el rastreo remoto y se realizo el push exitosamente."
             except subprocess.CalledProcessError as e2:
-                return False, f"Fallo al configurar el upstream: {e2.stderr.decode()}"
+                error_msg2 = e2.stderr if isinstance(e2.stderr, str) else e2.stderr.decode('utf-8', errors='replace')
+                return False, f"Fallo al configurar el upstream: {error_msg2}"
         return False, error_msg
 
 def checkout_branch(branch_name):
     """Intenta cambiar de rama, devolviendo el error específico si falla."""
     try:
-        subprocess.run(['git', 'checkout', branch_name], check=True, capture_output=True)
+        subprocess.run(['git', 'checkout', branch_name], check=True, capture_output=True, text=True)
         return True, "Checkout exitoso."
     except subprocess.CalledProcessError as e:
-        return False, e.stderr.decode()
+        error_msg = e.stderr if isinstance(e.stderr, str) else e.stderr.decode('utf-8', errors='replace')
+        return False, error_msg
 
 def merge_branch(branch_name):
     try:
-        subprocess.run(['git', 'merge', '--no-ff', branch_name], check=True, capture_output=True)
+        subprocess.run(['git', 'merge', '--no-ff', branch_name], check=True, capture_output=True, text=True)
         return 0, "Fusion completada exitosamente."
     except subprocess.CalledProcessError as e:
-        error_msg = e.stderr.decode().lower()
-        if 'conflicto' in error_msg or 'conflict' in error_msg:
-            subprocess.run(['git', 'merge', '--abort'], check=False, capture_output=True)
+        error_msg = e.stderr if isinstance(e.stderr, str) else e.stderr.decode('utf-8', errors='replace')
+        error_msg_lower = error_msg.lower()
+        if 'conflicto' in error_msg_lower or 'conflict' in error_msg_lower:
+            subprocess.run(['git', 'merge', '--abort'], check=False, capture_output=True, text=True)
             return 1, "Conflicto de fusion detectado. La fusion ha sido abortada."
         return 2, f"Error durante la fusion: {error_msg}"
 
@@ -131,7 +155,8 @@ def get_backup_commits(limit=10):
 def checkout_commit(commit_hash):
     """Hace checkout a un commit específico."""
     try:
-        subprocess.run(['git', 'checkout', commit_hash], check=True, capture_output=True)
+        subprocess.run(['git', 'checkout', commit_hash], check=True, capture_output=True, text=True)
         return True, f"Cambiado a commit {commit_hash}"
     except subprocess.CalledProcessError as e:
-        return False, e.stderr.decode()
+        error_msg = e.stderr if isinstance(e.stderr, str) else e.stderr.decode('utf-8', errors='replace')
+        return False, error_msg

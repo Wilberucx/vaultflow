@@ -79,5 +79,50 @@ def discover():
     """Auto-descubre y registra vaults gestionados por vaultflow."""
     discover_vaults()
 
+@cli.command()
+def sysinfo():
+    """Muestra información del sistema y verifica requisitos."""
+    from .platform_utils import get_platform_info, verify_system_requirements
+    from rich.console import Console
+    from rich.panel import Panel
+    
+    console = Console()
+    
+    # Verificar requisitos
+    success, messages = verify_system_requirements()
+    
+    # Obtener información de la plataforma
+    platform_info = get_platform_info()
+    
+    # Construir el mensaje de salida
+    output = "[bold cyan]Información del Sistema[/bold cyan]\n\n"
+    
+    # Requisitos
+    output += "[bold]Requisitos:[/bold]\n"
+    for msg in messages:
+        output += f"{msg}\n"
+    
+    output += f"\n[bold]Configuración:[/bold]\n"
+    output += f"Directorio de config: [cyan]{platform_info['config_dir']}[/cyan]\n"
+    
+    output += f"\n[bold]Detalles del Sistema:[/bold]\n"
+    output += f"Sistema Operativo: {platform_info['system']} {platform_info['release']}\n"
+    output += f"Arquitectura: {platform_info['machine']}\n"
+    output += f"Python: {platform_info['python_version']}\n"
+    
+    # Determinar el color del borde según el éxito
+    border_style = "green" if success else "red"
+    status = "✓ Sistema compatible" if success else "✗ Requisitos faltantes"
+    
+    console.print(Panel(
+        output,
+        title=f"[bold]{status}[/bold]",
+        border_style=border_style,
+        expand=False
+    ))
+    
+    if not success:
+        console.print("\n[yellow]Por favor, instala los requisitos faltantes antes de usar vaultflow.[/yellow]")
+
 if __name__ == '__main__':
     cli()

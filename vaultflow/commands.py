@@ -7,6 +7,7 @@ from rich.console import Console
 from .git_utils import *
 from .config import register_vault, is_managed_vault, get_current_vault_info, get_managed_vaults, get_vault_name_from_path, auto_discover_and_register_vaults, cleanup_invalid_vaults, create_vault_marker
 from .logs import log_operation, get_log_file_path
+from .platform_utils import open_file_safe, get_default_documents_paths, verify_system_requirements
 # La importación clave que se había perdido:
 from .git_utils import commit_changes as git_commit_util
 
@@ -37,7 +38,7 @@ def validation_guard():
 
 def ensure_gitignore_is_updated():
     if os.path.exists('.gitignore'):
-        with open('.gitignore', 'r+', encoding='utf-8') as f:
+        with open_file_safe('.gitignore', 'r+') as f:
             content = f.read()
             if VAULTFLOW_GITIGNORE_HEADER not in content:
                 click.echo("Actualizando .gitignore con las reglas de vaultflow...")
@@ -45,7 +46,7 @@ def ensure_gitignore_is_updated():
                 click.secho("✓ .gitignore actualizado.", fg="green")
     else:
         click.echo("Creando archivo .gitignore profesional...")
-        with open('.gitignore', 'w', encoding='utf-8') as f: f.write(GITIGNORE_CONTENT.strip())
+        with open_file_safe('.gitignore', 'w') as f: f.write(GITIGNORE_CONTENT.strip())
         click.secho("✓ .gitignore creado.", fg="green")
 
 def initialize_vault():
@@ -95,13 +96,25 @@ def create_local_backup():
     stage_all_changes()
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     commit_message = f"Backup vaultflow - {timestamp}"
-    if git_commit_util(commit_message):
+    success, detail = git_commit_util(commit_message)
+    if success:
         click.secho("\n✓ Backup local completado exitosamente.", fg="green")
         log_operation("backup", commit_message)
         show_status()
     else:
-        click.secho("✗ Error al crear el backup.", fg="red")
-        log_operation("backup", "Fallo al crear el backup (commit)", success=False)
+        # Mensajes mas amigables para casos comunes
+        lowered = detail.lower()
+        if 'nothing to commit' in lowered:
+            click.secho("✗ Error al crear el backup: No hay cambios preparados para commitear.", fg="yellow")
+        elif 'please tell me who you are' in lowered or 'user.name' in lowered or 'user.email' in lowered:
+            click.secho("✗ Git requiere configurar tu identidad (user.name y user.email).", fg="red")
+            click.echo("  Ejecuta:")
+            click.echo("    git config --global user.name \"Tu Nombre\"")
+            click.echo("    git config --global user.email \"tu@email.com\"")
+        else:
+            click.secho("✗ Error al crear el backup. Detalle de Git:", fg="red")
+            click.echo("  " + detail.replace("\n", "\n  "))
+        log_operation("backup", f"Fallo al crear el backup: {detail}", success=False)
 
 def push_changes_to_remote():
     if not validation_guard(): return
@@ -237,18 +250,29 @@ def commit_changes():
     if not validation_guard(): return
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     commit_message = f"Backup vaultflow - {timestamp}"
-    if git_commit_util(commit_message):
+    success, detail = git_commit_util(commit_message)
+    if success:
         click.secho("✓ Backup local creado exitosamente.", fg="green")
         show_status()
     else:
-        click.secho("✗ Error al crear el backup. Posible causa: No hay cambios preparados.", fg="red")
+        lowered = detail.lower()
+        if 'nothing to commit' in lowered:
+            click.secho("✗ No hay cambios preparados para commitear.", fg="yellow")
+        elif 'please tell me who you are' in lowered or 'user.name' in lowered or 'user.email' in lowered:
+            click.secho("✗ Git requiere configurar tu identidad (user.name y user.email).", fg="red")
+            click.echo("  Ejecuta:")
+            click.echo("    git config --global user.name \"Tu Nombre\"")
+            click.echo("    git config --global user.email \"tu@email.com\"")
+        else:
+            click.secho("✗ Error al crear el backup. Detalle de Git:", fg="red")
+            click.echo("  " + detail.replace("\n", "\n  "))
 
 def show_logs():
     if not validation_guard(): return
     log_file = get_log_file_path()
     if not os.path.exists(log_file):
         click.secho("No se ha encontrado ningun historial de operaciones.", fg="yellow"); return
-    with open(log_file, 'r', encoding='utf-8') as f:
+    with open_file_safe(log_file, 'r') as f:
         logs = json.load(f)
     console = Console()
     console.print("[bold magenta]Historial de Operaciones de vaultflow[/]")
@@ -341,11 +365,8 @@ def discover_vaults():
         else:
             console.print("[yellow]⚠ No se encontraron vaults gestionados por vaultflow en ubicaciones comunes.[/yellow]")
             console.print("\n[dim]Ubicaciones buscadas:[/dim]")
-            home = os.path.expanduser("~")
-            locations = [
-                os.path.join(home, "Documents"),
-                home
-            ]
+            # Usar las rutas específicas de la plataforma
+            locations = get_default_documents_paths()
             for location in locations:
                 exists = "✓" if os.path.exists(location) else "✗"
                 console.print(f"  [dim]{exists} {location}[/dim]")

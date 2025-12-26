@@ -1,6 +1,7 @@
 import os
 import json
 from datetime import datetime
+from .platform_utils import open_file_safe
 
 LOG_FILE_NAME = ".vaultflow_log.json"
 
@@ -14,7 +15,7 @@ def log_operation(command, message, success=True):
     
     if os.path.exists(log_file):
         try:
-            with open(log_file, 'r', encoding='utf-8') as f:
+            with open_file_safe(log_file, 'r') as f:
                 logs = json.load(f)
         except json.JSONDecodeError:
             logs = [] # Si el archivo está corrupto, empezamos de nuevo
@@ -30,5 +31,5 @@ def log_operation(command, message, success=True):
     
     logs.insert(0, new_entry)
     
-    with open(log_file, 'w', encoding='utf-8') as f:
+    with open_file_safe(log_file, 'w') as f:
         json.dump(logs, f, indent=4)

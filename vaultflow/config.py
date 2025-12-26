@@ -1,25 +1,26 @@
 import os
 import json
+from .platform_utils import get_config_dir, get_default_documents_paths, open_file_safe
 
-CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".vaultflow")
+CONFIG_DIR = get_config_dir()
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 
 def _ensure_config_exists():
     os.makedirs(CONFIG_DIR, exist_ok=True)
     if not os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'w') as f:
+        with open_file_safe(CONFIG_FILE, 'w') as f:
             json.dump({"managed_vaults": []}, f, indent=4)
 
 def _load_config():
     _ensure_config_exists()
     try:
-        with open(CONFIG_FILE, 'r') as f:
+        with open_file_safe(CONFIG_FILE, 'r') as f:
             return json.load(f)
     except json.JSONDecodeError:
         return {"managed_vaults": []} # Si el archivo está corrupto, empezamos de cero
 
 def _save_config(config_data):
-    with open(CONFIG_FILE, 'w') as f:
+    with open_file_safe(CONFIG_FILE, 'w') as f:
         json.dump(config_data, f, indent=4)
 
 def register_vault(vault_path):
@@ -87,7 +88,7 @@ def is_vaultflow_repository(path):
         # Verificar marcador legacy en .gitignore (para compatibilidad)
         gitignore_path = os.path.join(path, '.gitignore')
         if os.path.exists(gitignore_path):
-            with open(gitignore_path, 'r', encoding='utf-8') as f:
+            with open_file_safe(gitignore_path, 'r') as f:
                 content = f.read()
                 if "# === Bloque gestionado por vaultflow ===" in content:
                     return True
@@ -100,11 +101,8 @@ def is_vaultflow_repository(path):
 def scan_for_vaultflow_repos(search_paths=None):
     """Escanea directorios especificados buscando repositorios de vaultflow."""
     if search_paths is None:
-        home = os.path.expanduser("~")
-        search_paths = [
-            os.path.join(home, "Documents"),  # Común en todos los OS
-            home  # Home directory - lugar más probable
-        ]
+        # Usar las rutas específicas de cada plataforma
+        search_paths = get_default_documents_paths()
     
     found_vaults = []
     
@@ -180,7 +178,7 @@ def create_vault_marker(vault_path):
                 "vault_name": os.path.basename(vault_path),
                 "vault_path": os.path.abspath(vault_path)
             }
-            with open(vault_lock_file, 'w', encoding='utf-8') as f:
+            with open_file_safe(vault_lock_file, 'w') as f:
                 json.dump(lock_data, f, indent=2)
         
         # Crear archivo de configuración local del vault
@@ -194,7 +192,7 @@ def create_vault_marker(vault_path):
                     "backup_frequency": "daily"
                 }
             }
-            with open(config_file, 'w', encoding='utf-8') as f:
+            with open_file_safe(config_file, 'w') as f:
                 json.dump(local_config, f, indent=2)
         
         return True
@@ -217,7 +215,7 @@ def get_vault_lock_info(vault_path=None):
         return None
     
     try:
-        with open(vault_lock_file, 'r', encoding='utf-8') as f:
+        with open_file_safe(vault_lock_file, 'r') as f:
             return json.load(f)
     except:
         return None
